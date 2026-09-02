@@ -1,0 +1,23 @@
+CARGO DISPATCH MANIFEST & FREIGHT LOG
+DOWNTOWN WAREHOUSE — TERMINAL DOCK 3, MUMBAI
+MANIFEST NUMBER: MNF-95-0614
+DATE OF ENTRY: June 14, 1995
+
+CONSIGNOR: Mehta Industries Ltd., Nariman Point, Mumbai
+CONSIGNEE: Apex Shipping Co., Bandra Docks / Port Louis
+DISPATCH SUPERVISOR: Sarah Rao
+
+CARGO INVENTORY LISTING:
+- Item Code 8401: 20 Barrels Industrial Solvent (Benzene-Xylene Compound)
+- Item Code 8402: 15 Crates Precision Instrumentation
+- Item Code 9920: 5 Sealed Wooden Crates — Designated "CONFIDENTIAL ARCHIVE / TAX RECORDS"
+
+AUTHORIZATION & GATE CLEARANCE:
+- Pre-approved by: John Mehta, Managing Director
+- Cargo Gate Exit: Unscheduled Night Dispatch authorized at 22:15 hours.
+- Receiving Hauler: Driver identified as affiliated with Bandra Docks freight syndicate.
+- Sign-off Signature: Sarah Rao (22:30 hours).
+
+SPECIAL NOTE:
+Warehouse fire alarm triggered 75 minutes subsequent to completion of this dispatch entry.
+All physical paper copies stored in office 4 destroyed; this carbon duplicate salvaged from gatehouse security checkpoint.

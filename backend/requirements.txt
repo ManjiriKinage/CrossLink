@@ -1,0 +1,14 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+sqlalchemy>=2.0.28
+spacy>=3.7.4
+sentence-transformers>=2.5.0
+chromadb>=0.4.24
+networkx>=3.2.0
+python-multipart>=0.0.9
+neo4j>=5.18.0
+numpy>=1.26.0
+pypdfium2>=4.28.0
+python-dotenv>=1.0.1
+aiofiles>=23.2.1
