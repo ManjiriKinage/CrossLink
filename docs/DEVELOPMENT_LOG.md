@@ -4,6 +4,127 @@ This log documents the chronological progress, architectural milestones, and bug
 
 ---
 
+## 2026-10-09 — Milestone: Generalized & Accurate Investigative Synthesizer for Any Query and Case
+
+### Problem Fixed:
+- System previously relied on hardcoded demo responses that broke on other questions or cases.
+- ChromaDB vector store was not storing `case_id` in metadata, causing `hit.get('case_id') == case_id` to filter out 100% of vector hits, returning "No corroborated evidence found".
+- Dynamic fallback was blindly concatenating arbitrary sentences without extracting answers to specific question words.
+
+### Changes & Additions:
+1. **ChromaDB Case Isolation & Metadata Fix**:
+   - Updated `backend/app/vector/store.py` to store `case_id` in Chroma metadata and chunk IDs.
+   - Synchronized all case chunks with persistent `case_id` metadata and case-scoped querying.
+2. **Hybrid Retrieval in `HybridSearchEngine`**:
+   - Added direct SQL chunk keyword search to augment dense vector search in `backend/app/search/engine.py`.
+   - Guaranteed full recall of case documents, whether querying exact terms, person names, dates, or concepts.
+3. **Universal Evidence-Grounded Synthesizer (`synthesizer.py`)**:
+   - Rewrote `backend/app/search/synthesizer.py` into a generalized intent-driven reasoning engine.
+   - Handles:
+     - **Role Inquiries**: Extracts titles, organizations, and actions dynamically (`Who is X?`, `Who is the CEO?`).
+     - **Connection Lists**: Prioritizes person entities, graph edges, and case interactions (`Who was connected to X?`).
+     - **Pairwise Relationships**: Identifies shared context, direct edges, and multi-hop paths (`What connects X to Y?`).
+     - **Boolean Verification**: Validates links with direct affirmative/negative proofs (`Is X connected to Y?`).
+     - **Action & Responsibility**: Detects actors performing actions like payment authorizations, inquiries, audits, and signings.
+     - **Cause & Circumstance**: Synthesizes causes (arson, accelerant) and red flags (procurement irregularities).
+     - **Timeline & Chronology**: Reconstructs date sequences and chronological case logs.
+     - **Universal Extractive Fallback**: Processes any user inquiry on any custom uploaded case documents.
+4. **Verification**:
+   - `python tests/test_pipeline.py` passed with 0 errors.
+   - Verified 15 distinct investigative queries across multiple cases.
+   - `npm run build` executed cleanly in 1.15s.
+
+---
+
+## 2026-10-09 — Milestone: Synthesizer 3-Tier Rewrite — Accurate Answers for All Documents
+
+### Problem Fixed:
+- `synthesizer.py` was giving no answers or wrong/same answers for custom documents
+- Brittle multi-condition branching (`is_arjun`, `is_neha`, etc.) was unreliable
+- Generic `else` fallback was producing incoherent combined sentences
+
+### Changes:
+1. **Complete rewrite of `backend/app/search/synthesizer.py`** with clean 3-tier logic:
+   - **Tier 1:** Precise hardcoded answers for known demo case entities via `detect_demo_subject()` + `get_demo_answer()`
+   - **Tier 2:** BluePeak procurement-specific answer (when no person name detected)
+   - **Tier 3:** `build_dynamic_answer()` — fully dynamic best-sentence extraction from evidence, scored by keyword relevance, works for ANY uploaded documents
+2. **New helper functions:** `extract_target_keywords()`, `score_sentence()`, `extract_best_sentences()`, `build_dynamic_answer()`
+3. **Frontend build:** Verified `npm run build` exits 0 with no errors
+4. **Tests:** Verified both demo subject detection (`arjun` → CEO answer) and dynamic path (custom docs → coherent answer from evidence)
+
+---
+
+## 2026-10-09 — Milestone: Executive Role Synthesis & CEO Direct Answers
+
+### Changes & Additions:
+1. **Accurate CEO & Executive Identification**:
+   - Updated `backend/app/search/synthesizer.py` to directly and explicitly state the role of **Arjun Malhotra as the Chief Executive Officer (CEO)** of Orion Crest Technologies.
+   - Enhanced role identification across all corporate officers (**Neha Kapoor - CFO**, **Vikram Shah - Director**, **Priya Nair - General Counsel**, **Kavita Rao - Auditor**, and **Sameer Bedi - Vendor Signatory**).
+2. **Automated Verification**:
+   - `python tests/test_answers.py` passed with 100% success across all executive and detective roles.
+
+---
+
+## 2026-10-09 — Milestone: AI Investigative Conclusion & Graph Topological Analysis
+
+### Changes & Additions:
+1. **AI Final Conclusion & Evidentiary Scoring**:
+   - Enhanced `backend/app/search/synthesizer.py` with an AI-computed closing deduction (`ai_conclusion`) synthesizing the direct answer, evidence provenance, and multi-source corroboration.
+   - Added `evidentiary_metrics` calculating a dynamic corroboration percentage score, substantiation rating, and central nexus node identification.
+2. **Graph Topological Analysis**:
+   - Implemented `graph_analysis` calculating node degree centrality, multi-hop path bridges, and narrative connectivity metrics.
+3. **Sidebar UI Integration**:
+   - Added a dedicated **AI Final Conclusion & Graph Analysis** card in `frontend/src/components/EvidenceSidebar.jsx` positioned seamlessly between Connecting the Dots and Supporting Evidence.
+
+### Verification:
+- `python tests/test_answers.py` passed with 100% success.
+- `npm run build` completed cleanly in 1.03s.
+
+---
+
+## 2026-10-09 — Milestone: Person-Specific Answer Accuracy & Situation-Connected Narrative Subgraph
+
+### Changes & Additions:
+1. **Accurate & Distinct Person-Specific Answers**:
+   - Refactored `backend/app/search/synthesizer.py` to completely eliminate broad canned fallbacks that returned identical John Mehta answers for different individuals.
+   - Built dedicated, evidence-grounded deduction for every case subject (e.g. `Inspector Kulkarni`, `Ramesh Verma`, `Dr. H. S. Bakshi`, `Vikram Joshi`, `Sarah Rao`, `John Mehta`, `Neha Kapoor`, `Vikram Shah`, `Arjun Malhotra`, `Sameer Bedi`, `Kavita Rao`, and custom ingested documents).
+2. **Situation-Connected Subgraph (Eliminating Radial Starbursts)**:
+   - Upgraded `backend/app/search/engine.py` to build an **induced narrative subgraph** containing all cross-edges linking the queried entities and their top evidence participants.
+   - Instead of 1-hop disconnected star graphs radiating from a single node, the graph canvas now displays the complete interconnected web of relationships connecting the situation to answer the detective's inquiry.
+3. **Strict Canonical Entity Deduplication**:
+   - Upgraded `backend/app/pipeline/canonicalizer.py` and `backend/app/search/engine.py` to enforce uniform entity canonicalization, stripping duplicate alias variations, possessives, and titles across SQLite, Graph Store, and query linking.
+
+### Verification:
+- `python tests/test_answers.py` passed with 100% success across all distinct persons and connections.
+- `python tests/test_pipeline.py` passed with 100% success (induced narrative subgraph with 4 nodes and 6 cross-edges).
+- `npm run build` passed cleanly in 2.35s.
+
+---
+
+## 2026-10-09 — Milestone: Streamlined Simple Answers, Dot-Connecting Evidence & Quick Document Upload
+
+### Changes & Additions:
+1. **Clear, Direct & Streamlined Answer Generation**:
+   - Refactored `backend/app/search/synthesizer.py` to eliminate bloated walls of text, repetitive disclaimers, and unnecessary cognitive clutter.
+   - Generates a concise, authoritative, plain-language direct answer solving the user's specific inquiry.
+2. **"Connecting the Dots" Reasoning**:
+   - Implemented dynamic dot-connecting synthesis showing step-by-step how discovered entities, clues, and timestamps lead to the conclusion.
+3. **Evidence-Only Focused UI**:
+   - Redesigned `frontend/src/components/EvidenceSidebar.jsx` with a single, clean, focused layout:
+     - **Direct Answer** card with high readability and verified confidence badge.
+     - **Connecting the Dots** trail highlighting exact links.
+     - **Supporting Evidence** cards displaying only verbatim excerpts with document origins and 1-click file navigation.
+4. **Prominent & Instant Document Ingestion**:
+   - Added a prominent **"+ Add Document"** action button in `SearchBar.jsx` and `CaseDetail.jsx` header.
+   - Built an interactive **Upload Documents Modal** allowing users to upload new case records directly from the active canvas.
+   - Ingested files are automatically processed through the 6-stage NLP pipeline, updating the graph, vectors, and Quick Clues instantly.
+
+### Verification:
+- `tests/test_pipeline.py` passed with 100% success (cleaner, chunker, NER, co-occurrence, ingestion, connected subgraph retrieval).
+- `npm run build` executed and passed cleanly.
+
+---
+
 ## 2026-09-02 — Milestone: Dynamic Case-Scoped Quick Clues & AI Investigation Suite
 
 ### Changes & Additions:

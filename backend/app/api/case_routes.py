@@ -335,9 +335,8 @@ def get_case_graph(case_id: int, db: Session = Depends(get_db)):
     # Get all evidence/relationships for this case
     evidence_items = db.query(EvidenceModel).filter(EvidenceModel.case_id == case_id).all()
     
-    # Build graph representation
+    # Build graph representation with deduplicated nodes and consolidated edges
     nodes = []
-    edges = []
     node_ids = set()
     
     for entity in entities:
@@ -346,18 +345,43 @@ def get_case_graph(case_id: int, db: Session = Depends(get_db)):
                 "id": entity.canonical_name,
                 "label": entity.canonical_name,
                 "type": entity.entity_type,
-                "title": f"{entity.name} ({entity.entity_type})"
+                "title": f"{entity.canonical_name} ({entity.entity_type})"
             })
             node_ids.add(entity.canonical_name)
     
+    edge_map = {}
     for evidence in evidence_items:
-        edges.append({
-            "source": evidence.source_entity,
-            "target": evidence.target_entity,
-            "relationship_type": evidence.relationship_type,
-            "weight": evidence.weight,
-            "document": evidence.document_name
-        })
+        s = evidence.source_entity
+        t = evidence.target_entity
+        if s == t or s not in node_ids or t not in node_ids:
+            continue
+        key = tuple(sorted([s, t]))
+        if key not in edge_map:
+            edge_map[key] = {
+                "source": s,
+                "target": t,
+                "relationship_type": evidence.relationship_type,
+                "weight": float(evidence.weight),
+                "documents": {evidence.document_name},
+                "snippet_count": 1
+            }
+        else:
+            edge_map[key]["weight"] += float(evidence.weight)
+            edge_map[key]["documents"].add(evidence.document_name)
+            edge_map[key]["snippet_count"] += 1
+
+    edges = [
+        {
+            "source": data["source"],
+            "target": data["target"],
+            "relationship_type": data["relationship_type"],
+            "weight": round(min(5.0, data["weight"]), 2),
+            "documents": sorted(list(data["documents"])),
+            "snippet_count": data["snippet_count"],
+            "document": ", ".join(sorted(list(data["documents"])))
+        }
+        for data in edge_map.values()
+    ]
     
     return {
         "case_id": case_id,

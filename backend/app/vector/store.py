@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 import chromadb
 from chromadb.config import Settings as ChromaSettings
@@ -29,7 +29,7 @@ class VectorStore:
 
     def add_chunks(self, chunks: List[Dict[str, Any]]):
         """
-        Embeds chunks and inserts into ChromaDB.
+        Embeds chunks and inserts into ChromaDB with case_id in metadata.
         """
         if not chunks:
             return
@@ -37,9 +37,13 @@ class VectorStore:
         texts = [c["text"] for c in chunks]
         embeddings = self.model.encode(texts, convert_to_numpy=True).tolist()
         
-        ids = [f"chunk_{c['document_name']}_{c['chunk_id']}" for c in chunks]
+        ids = [
+            f"chunk_case{int(c.get('case_id') or 0)}_{c['document_name']}_{c['chunk_id']}"
+            for c in chunks
+        ]
         metadatas = [
             {
+                "case_id": int(c.get("case_id") or 0),
                 "document_name": c["document_name"],
                 "chunk_id": c["chunk_id"],
                 "start_char": c.get("start_char", 0),
@@ -55,16 +59,27 @@ class VectorStore:
             metadatas=metadatas
         )
 
-    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 5, case_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
-        Performs semantic vector search across document chunks.
+        Performs semantic vector search across document chunks with optional case_id filtering.
         """
         query_embedding = self.model.encode([query], convert_to_numpy=True).tolist()
         
-        results = self.collection.query(
-            query_embeddings=query_embedding,
-            n_results=min(top_k, max(1, self.collection.count()))
-        )
+        query_kwargs = {
+            "query_embeddings": query_embedding,
+            "n_results": min(top_k * 2, max(1, self.collection.count()))
+        }
+        if case_id is not None and case_id > 0:
+            query_kwargs["where"] = {"case_id": int(case_id)}
+
+        try:
+            results = self.collection.query(**query_kwargs)
+        except Exception:
+            # Fallback without where clause if metadata filter encounters issue
+            results = self.collection.query(
+                query_embeddings=query_embedding,
+                n_results=min(top_k * 2, max(1, self.collection.count()))
+            )
 
         hits = []
         if not results or not results["documents"] or not results["documents"][0]:
@@ -75,16 +90,21 @@ class VectorStore:
         distances = results["distances"][0] if "distances" in results else [0.0] * len(docs)
 
         for doc_text, meta, dist in zip(docs, metas, distances):
-            # Cosine similarity score = 1 - cosine distance
+            hit_case_id = meta.get("case_id")
+            # If case_id filter specified, enforce it
+            if case_id is not None and case_id > 0 and hit_case_id is not None:
+                if int(hit_case_id) != int(case_id):
+                    continue
             similarity = round(max(0.0, 1.0 - float(dist)), 4)
             hits.append({
+                "case_id": hit_case_id,
                 "document_name": meta.get("document_name", "unknown"),
                 "chunk_id": meta.get("chunk_id", 0),
                 "text": doc_text,
                 "score": similarity
             })
 
-        return hits
+        return hits[:top_k]
 
     def delete_document(self, document_name: str):
         """

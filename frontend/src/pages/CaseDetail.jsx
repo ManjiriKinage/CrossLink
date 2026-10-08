@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, RefreshCw, Activity, FolderArchive, Database, Layers, ShieldAlert, Sparkles, UploadCloud } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, RefreshCw, Activity, FolderArchive, Database, Layers, ShieldAlert, Sparkles, UploadCloud, Plus, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import SearchBar from '../components/SearchBar';
 import GraphCanvas from '../components/GraphCanvas';
 import EvidenceSidebar from '../components/EvidenceSidebar';
@@ -25,6 +25,12 @@ export default function CaseDetail({ caseData, onBack }) {
 
   // Document explorer navigation helper
   const [docToView, setDocToView] = useState(null);
+
+  // Upload modal state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadToast, setUploadToast] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Load case graph and documents
   const loadCaseData = async () => {
@@ -125,6 +131,48 @@ export default function CaseDetail({ caseData, onBack }) {
   const handleDocumentDeleted = async (docId) => {
     setDocuments(prev => prev.filter(d => d.id !== docId));
     await loadCaseData();
+  };
+
+  // Direct File Upload from Investigation View
+  const handleDirectFilesUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setUploadToast(null);
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append('files', files[i]);
+    }
+
+    try {
+      const res = await fetch(`http://localhost:8000/api/cases/${caseData.id}/documents`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUploadToast({
+          type: 'success',
+          text: `Added ${files.length} document(s)! Knowledge graph & vectors updated.`
+        });
+        setShowUploadModal(false);
+        await loadCaseData();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setUploadToast({
+          type: 'error',
+          text: errData.detail || 'Failed to upload document(s).'
+        });
+      }
+    } catch (err) {
+      setUploadToast({ type: 'error', text: `Upload error: ${err.message}` });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const stats = {
@@ -283,6 +331,15 @@ export default function CaseDetail({ caseData, onBack }) {
         {/* Right: Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           <button
+            onClick={() => setShowUploadModal(true)}
+            className="btn btn-primary"
+            title="Add documents to this case"
+            style={{ fontSize: '12px', padding: '6px 14px' }}
+          >
+            <Plus size={14} /> Add Document
+          </button>
+
+          <button
             onClick={loadCaseData}
             disabled={loading}
             className="btn btn-secondary"
@@ -294,6 +351,35 @@ export default function CaseDetail({ caseData, onBack }) {
           </button>
         </div>
       </header>
+
+      {/* Global Upload Notification Toast */}
+      {uploadToast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          zIndex: 100,
+          background: uploadToast.type === 'success' ? '#064e3b' : '#7f1d1d',
+          border: `1px solid ${uploadToast.type === 'success' ? 'var(--accent-emerald)' : 'var(--accent-rose)'}`,
+          color: '#ffffff',
+          borderRadius: '8px',
+          padding: '12px 18px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          fontSize: '12.5px'
+        }}>
+          {uploadToast.type === 'success' ? <CheckCircle2 size={16} color="var(--accent-emerald)" /> : <AlertCircle size={16} color="var(--accent-rose)" />}
+          <span>{uploadToast.text}</span>
+          <button
+            onClick={() => setUploadToast(null)}
+            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: '2px', marginLeft: '6px' }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Main Tab Content */}
       <div className="main-content">
@@ -310,6 +396,7 @@ export default function CaseDetail({ caseData, onBack }) {
               hasActiveFilter={!!currentQuery || !!selectedEdge || !!selectedNode}
               sidebarVisible={sidebarVisible}
               onToggleSidebar={() => setSidebarVisible(prev => !prev)}
+              onUploadClick={() => setShowUploadModal(true)}
             />
 
             <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative', overflow: 'hidden' }}>
@@ -367,6 +454,117 @@ export default function CaseDetail({ caseData, onBack }) {
           />
         )}
       </div>
+
+      {/* Quick Add Document Modal */}
+      {showUploadModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(5, 8, 14, 0.85)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+          padding: '20px',
+          boxSizing: 'border-box'
+        }}>
+          <div style={{
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-dim)',
+            borderRadius: '14px',
+            padding: '24px 28px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: 'var(--shadow-md)',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '13px',
+                fontWeight: '700',
+                color: 'var(--text-gold)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                <UploadCloud size={16} /> Add Documents to Dossier
+              </div>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="btn-ghost"
+                style={{ padding: '4px', cursor: 'pointer' }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
+              Upload witness statements, transcripts, reports, or memos. The NLP pipeline will extract entities, connect the dots, and index them immediately.
+            </p>
+
+            <div style={{
+              border: '2px dashed var(--border-dim)',
+              borderRadius: '10px',
+              padding: '32px 20px',
+              textAlign: 'center',
+              background: 'var(--bg-primary)',
+              marginBottom: '16px'
+            }}>
+              <UploadCloud size={36} color="var(--accent-amber)" style={{ margin: '0 auto 10px' }} />
+              <div style={{ fontSize: '13px', color: '#fff', fontWeight: '600', marginBottom: '4px' }}>
+                Select Plain Text (.txt, .md) Files
+              </div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                Single or batch document upload
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".txt,.md,.log"
+                onChange={handleDirectFilesUpload}
+                disabled={isUploading}
+                style={{ display: 'none' }}
+                id="modal-file-input"
+              />
+
+              <label
+                htmlFor="modal-file-input"
+                className="btn btn-primary"
+                style={{
+                  padding: '8px 20px',
+                  fontSize: '12.5px',
+                  cursor: isUploading ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {isUploading ? <Sparkles size={14} className="animate-spin" /> : <Plus size={14} />}
+                {isUploading ? "Indexing Documents..." : "Choose Documents"}
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowUploadModal(false)}
+                className="btn btn-secondary"
+                style={{ padding: '6px 14px', fontSize: '12px' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

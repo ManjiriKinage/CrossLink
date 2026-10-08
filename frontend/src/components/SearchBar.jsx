@@ -11,7 +11,8 @@ export default function SearchBar({
   currentQuery,
   hasActiveFilter,
   sidebarVisible,
-  onToggleSidebar
+  onToggleSidebar,
+  onUploadClick
 }) {
   const [query, setQuery] = useState(currentQuery || "");
   const [quickClues, setQuickClues] = useState([]);
@@ -201,6 +202,21 @@ export default function SearchBar({
           <Search size={14} />
           {isLoading ? "Investigating..." : "AI Detective Search"}
         </button>
+
+        {/* Action: Add Document */}
+        {onUploadClick && (
+          <button
+            id="btn-add-document"
+            type="button"
+            onClick={onUploadClick}
+            className="btn btn-secondary"
+            title="Upload and ingest new plain text or case documents"
+            style={{ padding: '8px 14px', flexShrink: 0, color: 'var(--accent-emerald)', borderColor: 'rgba(52, 211, 153, 0.4)' }}
+          >
+            <span style={{ fontSize: '14px', fontWeight: 'bold' }}>+</span>
+            <span style={{ fontSize: '11.5px' }}>Add Document</span>
+          </button>
+        )}
 
         {/* Action: Clear Output / Reset View */}
         <button
