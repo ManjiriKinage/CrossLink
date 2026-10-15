@@ -1,0 +1,34 @@
+RIVERVIEW MUSEUM - VISITOR AND ACCESS REGISTER
+August 2024
+
+10 August 2024
+Visitor: Rohan Mehta
+Entry: 02:18 PM
+Exit: 04:05 PM
+Area: Main Exhibition Galleries
+
+12 August 2024
+Visitor: Rohan Mehta
+Entry: 05:42 PM
+Exit: 07:26 PM
+Area: Main Exhibition Galleries
+
+12 August 2024
+Contractor: Dev Malhotra
+Entry: 08:47 PM
+Exit: 10:18 PM
+Authorization: Security Systems Maintenance
+Area: Service Corridor / Security Control Area
+
+12 August 2024
+Staff: Ananya Rao
+Entry: 03:55 PM
+Exit: 08:23 PM
+Area: Exhibition Hall B / Curatorial Office
+
+Security Officer: Rahul Deshmukh
+Scheduled shift: 02:00 PM - 10:00 PM
+Recorded exit: 10:06 PM
+
+Note:
+The visitor register does not record any authorized visitor access to Exhibition Hall B after 08:10 PM on 12 August.

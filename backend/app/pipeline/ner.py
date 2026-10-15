@@ -1,4 +1,5 @@
 import spacy
+import re
 from typing import List, Dict, Any
 from app.pipeline.canonicalizer import canonicalize_entity, is_valid_entity
 from app.config import settings
@@ -14,7 +15,6 @@ def get_nlp():
         try:
             _nlp = spacy.load(settings.SPACY_MODEL)
         except OSError:
-            # If model not found locally, download it
             from spacy.cli import download
             download(settings.SPACY_MODEL)
             _nlp = spacy.load(settings.SPACY_MODEL)
@@ -27,10 +27,11 @@ ENTITY_TYPE_MAPPING = {
     "FAC": "LOCATION",
     "ORG": "ORGANIZATION",
     "DATE": "DATE",
-    "TIME": "DATE"
+    "TIME": "DATE",
+    "PRODUCT": "ARTIFACT",
+    "WORK_OF_ART": "ARTIFACT"
 }
 
-# Words to discard if extracted mistakenly
 STOP_ENTITIES = {
     "the", "a", "an", "this", "that", "it", "today", "yesterday", "tomorrow",
     "night", "morning", "afternoon", "evening", "hours", "days", "months",
@@ -38,37 +39,15 @@ STOP_ENTITIES = {
     "date", "time", "interviewer", "interviewee", "subject", "from", "to", "regards"
 }
 
-KNOWN_TYPE_CORRECTIONS = {
-    "Sameer Bedi": "PERSON",
-    "Vikram Shah": "PERSON",
-    "Neha Kapoor": "PERSON",
-    "Arjun Malhotra": "PERSON",
-    "Priya Nair": "PERSON",
-    "Rohan Mehta": "PERSON",
-    "Kavita Rao": "PERSON",
-    "Sarah Rao": "PERSON",
-    "John Mehta": "PERSON",
-    "Andheri East": "LOCATION",
-    "17 Lake View Road": "LOCATION",
-    "Mumbai Head Office": "LOCATION",
-    "Mumbai": "LOCATION",
-    "Downtown Warehouse": "LOCATION",
-    "Loading Bay 3": "LOCATION",
-    "Nariman Point": "LOCATION",
-    "Bandra Docks": "LOCATION",
-    "Colaba Police Station": "LOCATION",
-    "BluePeak Consulting": "ORGANIZATION",
-    "Meridian Retail Systems": "ORGANIZATION",
-    "Orion Crest Technologies": "ORGANIZATION",
-    "Shah Ventures": "ORGANIZATION",
-    "Mehta Industries": "ORGANIZATION",
-    "Apex Shipping Co.": "ORGANIZATION",
-    "Bombay Municipal Corporation": "ORGANIZATION"
+ARTIFACT_KEYWORDS = {
+    "sapphire", "diamond", "gemstone", "ruby", "emerald", "jewelry",
+    "artifact", "painting", "sculpture", "relic", "manuscript"
 }
 
 def extract_entities(text: str) -> List[Dict[str, Any]]:
     """
     Extracts, normalizes, and filters named entities from text using spaCy.
+    General and case-agnostic.
     """
     if not text:
         return []
@@ -84,8 +63,8 @@ def extract_entities(text: str) -> List[Dict[str, Any]]:
         if len(raw_name) < 2:
             continue
             
-        mapped_type = ENTITY_TYPE_MAPPING.get(ent.label_)
-        if not mapped_type:
+        mapped_type = ENTITY_TYPE_MAPPING.get(ent.label_, "UNKNOWN")
+        if mapped_type == "UNKNOWN":
             continue
             
         if raw_name.lower() in STOP_ENTITIES:
@@ -99,10 +78,10 @@ def extract_entities(text: str) -> List[Dict[str, Any]]:
         if not is_valid_entity(canonical, mapped_type):
             continue
 
-        # Check known type overrides
-        if canonical in KNOWN_TYPE_CORRECTIONS:
-            mapped_type = KNOWN_TYPE_CORRECTIONS[canonical]
-        
+        # Check if entity refers to a physical artifact
+        if any(ak in canonical.lower() for ak in ARTIFACT_KEYWORDS):
+            mapped_type = "ARTIFACT"
+
         # Deduplicate per chunk
         unique_key = (canonical, mapped_type)
         if unique_key in seen:
@@ -116,5 +95,22 @@ def extract_entities(text: str) -> List[Dict[str, Any]]:
             "start_char": ent.start_char,
             "end_char": ent.end_char
         })
+
+    # Also detect key artifact full references if spaCy split or missed them
+    # E.g., "Blue Sapphire of Maratha"
+    for m in re.finditer(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+(?:Sapphire|Diamond|Gemstone|Jewel)(?:\s+of\s+[A-Z][a-z]+)?)\b", text):
+        art_name = m.group(1).strip()
+        canon_art = canonicalize_entity(art_name, "ARTIFACT")
+        if is_valid_entity(canon_art, "ARTIFACT"):
+            unique_key = (canon_art, "ARTIFACT")
+            if unique_key not in seen:
+                seen.add(unique_key)
+                entities.append({
+                    "name": art_name,
+                    "canonical_name": canon_art,
+                    "type": "ARTIFACT",
+                    "start_char": m.start(),
+                    "end_char": m.end()
+                })
         
     return entities

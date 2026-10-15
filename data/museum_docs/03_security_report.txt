@@ -1,0 +1,22 @@
+RIVERVIEW MUSEUM - SECURITY INCIDENT REPORT
+Incident Date: 12 - 13 August 2024
+Prepared: 14 August 2024
+Prepared by: Rahul Deshmukh
+
+At approximately 11:35 PM on 12 August, the CCTV feed covering the service corridor and Exhibition Hall B stopped recording.
+
+The security control system recorded an access-card event at 11:42 PM.
+
+Card ID: SD-17
+Assigned to: Rahul Deshmukh
+Location: Service Corridor, Exhibition Hall B
+
+Rahul Deshmukh states that he was at home from approximately 10:30 PM onward and did not use his card at 11:42 PM.
+
+The maintenance log shows that Dev Malhotra, an external security-system technician, was present at the museum earlier that evening. His work order covered inspection of the CCTV control equipment.
+
+At 12:05 AM, the CCTV feed resumed.
+
+No forced entry was visible on the available camera footage.
+
+The report recommends investigating the use of Card SD-17 and reviewing the activities of all personnel with access to the security control area.

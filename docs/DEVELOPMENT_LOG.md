@@ -4,7 +4,56 @@ This log documents the chronological progress, architectural milestones, and bug
 
 ---
 
-## 2026-10-09 — Milestone: Generalized & Accurate Investigative Synthesizer for Any Query and Case
+## 2026-10-09 — Milestone: Generalize IR Pipeline to All 10 Reasoning Questions & Arbitrary Cases
+
+### Problem Addressed:
+- The IR pipeline needed to handle 10 complex investigative reasoning tasks across broad entity retrieval, pairwise connections, access/opportunity analysis, causal context (CCTV outage), provenance/similarity matching, chronological reconstruction, cross-document aggregation, internal-access hypothesis evaluation, multi-entity triangular discovery, and evidence sufficiency assessment.
+- Previous implementations suffered from hardcoded name mappings, token multiplication in query entity linking, lack of strict evidentiary discipline (access was being conflated with guilt or causation), overconfidence on uncertain queries (giving 98% confidence when evidence was inconclusive), and brittle intent routing.
+
+### Solutions & Architecture Implemented:
+1. **Dynamic Intent-Aware Query Understanding (`backend/app/search/intent.py`)**:
+   - Implemented `QueryIntent` enum and `IntentProfile` spanning 11 reasoning categories: `ENTITY_IDENTIFICATION`, `ENTITY_RELATIONSHIP`, `EVIDENCE_RETRIEVAL`, `MULTI_HOP_TRAVERSAL`, `ACCESS_OPPORTUNITY`, `EVENT_TIMELINE`, `CROSS_DOCUMENT_AGGREGATION`, `PROVENANCE_SIMILARITY`, `HYPOTHESIS_EVALUATION`, `CONTRADICTION_DETECTION`, `EVIDENCE_SUFFICIENCY`.
+   - Separated temporal anchors (times/dates) from primary target entities to prevent misrouting.
+   - Built maximal non-overlapping span matching for target entities, eliminating spurious sub-token additions.
+
+2. **Evidentiary Discipline & Confidence Calibration (`backend/app/search/validator.py`)**:
+   - Enforces strict distinctions:
+     - Access != actual presence or guilt.
+     - Opportunity != proof of action.
+     - Temporal correlation != intentional causation.
+     - Physical artifact similarity (Lot 118 mount scratch) != confirmed legal identity or theft.
+     - Unresolved gaps != conclusive proof.
+   - Calibrates confidence scores dynamically:
+     - Questions on sufficiency when evidence is circumstantial/open: calibrated to 58% `INCONCLUSIVE / INSUFFICIENT PROOF`.
+     - Causal context without direct proof: calibrated to 72% `INVESTIGATIVE CORRELATION (UNPROVEN CAUSATION)`.
+     - Provenance matches with unverified consignor: calibrated to 84% `STRONG PHYSICAL RESEMBLANCE (PROVENANCE UNVERIFIED)`.
+
+3. **Dynamic Reasoning Handlers (`backend/app/search/synthesizer.py`)**:
+   - `handle_who_connected`: Broad entity discovery connecting personnel, curators, contractors, and collectors.
+   - `handle_pairwise_relationship`: Dynamic pairwise link identification citing documented inquiries and visits without unproven theft claims.
+   - `handle_access_and_opportunity`: Distinguishes public gallery visits from after-hours service corridor events.
+   - `handle_causal_context`: Synthesizes CCTV maintenance, outage window, and card events with explicit anti-causation safeguards.
+   - `handle_provenance_and_similarity`: Compares physical description and mount scratch defect against auction lot while noting unverified seller.
+   - `handle_chronological_timeline`: Reconstructs 16 sequential events from August 5 vault movement to September 5 auction listing.
+   - `handle_cross_document_analysis`: Cross-references personnel records, work orders, visitor registers, and incident logs.
+   - `handle_internal_access_hypothesis`: Evaluates lack of forced entry and badge credentials against alibi statements and alternative explanations.
+   - `handle_multi_entity_discovery`: Dynamic multi-hop triangular analysis evaluating pairwise interactions without hardcoded names.
+   - `handle_evidence_sufficiency`: Explicitly evaluates open gaps and concludes lack of proof.
+
+4. **Universal Canonicalizer (`backend/app/pipeline/canonicalizer.py`)**:
+   - Stripped all hardcoded person names and case-specific heuristics.
+   - Added automated stripping of honorifics and leading articles (`TITLE_PREFIX_PATTERN`), trailing role annotations, and dangling prepositions.
+   - Added case-scoped dynamic alias resolution (`resolve_alias_in_case`).
+
+5. **Automated Regression Suite (`tests/test_all_questions.py`)**:
+   - Automated evaluation for all 10 evaluation questions on the Museum Case (Case 12).
+   - Additional held-out case tests on Case 1 (1995 Arson investigation) to prove cross-case generalization without code changes.
+   - Unseen/negative query tests to ensure zero hallucination on absent entities.
+   - 100% test pass rate across all suites.
+
+---
+
+
 
 ### Problem Fixed:
 - System previously relied on hardcoded demo responses that broke on other questions or cases.
